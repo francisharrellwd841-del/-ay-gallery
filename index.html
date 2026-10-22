@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080808">
+  <meta name="description" content="AY GALLERY — a personal photo gallery by Abdoul AY.">
+  <title>AY GALLERY</title>
+  <style>
+    :root { color-scheme: dark; --bg:#080808; --panel:#111; --line:#292929; --muted:#aaa; --white:#fff; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--white); }
+    header { padding:32px 18px 22px; text-align:center; border-bottom:1px solid var(--line); }
+    .brand { font-size:clamp(30px,7vw,58px); font-weight:900; letter-spacing:.13em; margin:0; }
+    .tagline { color:var(--muted); margin:10px 0 0; letter-spacing:.08em; font-size:12px; }
+    main { max-width:1150px; margin:auto; padding:22px 14px 50px; }
+    .toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+    input, select, button { background:#151515; color:#fff; border:1px solid #333; border-radius:10px; padding:12px 13px; font-size:14px; }
+    input { flex:1; min-width:170px; }
+    button { cursor:pointer; font-weight:700; }
+    button:hover { background:#292929; }
+    .notice { color:var(--muted); font-size:13px; line-height:1.6; margin:0 0 18px; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+    @media(min-width:620px) { .grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; } }
+    @media(min-width:900px) { .grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+    .tile { margin:0; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; cursor:pointer; }
+    .tile img { display:block; width:100%; aspect-ratio:4/5; object-fit:cover; background:#222; }
+    .tile figcaption { padding:10px; font-size:12px; color:#ddd; overflow-wrap:anywhere; }
+    .empty { padding:32px 15px; text-align:center; border:1px dashed #444; border-radius:12px; color:var(--muted); grid-column:1/-1; }
+    footer { text-align:center; color:#777; font-size:12px; padding:24px 12px; border-top:1px solid var(--line); }
+    dialog { width:min(94vw,900px); max-height:92vh; background:#0c0c0c; color:#fff; border:1px solid #444; border-radius:14px; padding:12px; }
+    dialog::backdrop { background:rgba(0,0,0,.88); }
+    dialog img { display:block; max-width:100%; max-height:78vh; object-fit:contain; margin:auto; }
+    .modalbar { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:4px 0 10px; }
+    .modalbar span { overflow-wrap:anywhere; font-size:13px; color:#ddd; }
+    a { color:#fff; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 class="brand">AY GALLERY</h1>
+    <p class="tagline">YOUR MEMORIES · YOUR STYLE · YOUR GALLERY</p>
+  </header>
+  <main>
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search photos by filename…" aria-label="Search photos">
+      <select id="sort" aria-label="Sort photos">
+        <option value="name">Sort: Name</option>
+        <option value="newest">Sort: Newest filename first</option>
+      </select>
+    </div>
+    <p class="notice">Welcome to AY GALLERY. Photos will appear here after you add them to the <strong>photos</strong> folder and update <strong>photos.json</strong>. Use only photos you have permission to publish.</p>
+    <section id="gallery" class="grid" aria-label="Photo gallery">
+      <div class="empty">Your gallery is ready. Add your own photos to display them here.</div>
+    </section>
+  </main>
+  <footer>© <span id="year"></span> AY GALLERY · Created by ABDOUL AY</footer>
+  <dialog id="viewer">
+    <div class="modalbar"><span id="caption"></span><button id="close" type="button">Close ✕</button></div>
+    <img id="large" alt="Selected gallery photo">
+  </dialog>
+  <script>
+    const gallery = document.querySelector('#gallery');
+    const search = document.querySelector('#search');
+    const sort = document.querySelector('#sort');
+    const viewer = document.querySelector('#viewer');
+    const large = document.querySelector('#large');
+    const caption = document.querySelector('#caption');
+    let photos = [];
+
+    document.querySelector('#year').textContent = new Date().getFullYear();
+
+    function render() {
+      const term = search.value.trim().toLowerCase();
+      let items = photos.filter(p => (p.title || p.src).toLowerCase().includes(term));
+      items.sort((a,b) => sort.value === 'newest'
+        ? (b.src.localeCompare(a.src))
+        : (a.src.localeCompare(b.src)));
+      gallery.replaceChildren();
+      if (!items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = photos.length ? 'No photos match your search.' : 'No photos added yet. Add photos to the gallery files to begin.';
+        gallery.append(empty); return;
+      }
+      for (const p of items) {
+        const fig = document.createElement('figure'); fig.className = 'tile'; fig.tabIndex = 0;
+        const img = document.createElement('img'); img.loading = 'lazy'; img.src = p.src; img.alt = p.title || 'AY Gallery photo';
+        img.onerror = () => { fig.remove(); };
+        const cap = document.createElement('figcaption'); cap.textContent = p.title || p.src.split('/').pop();
+        fig.append(img, cap);
+        const open = () => { large.src = p.src; large.alt = p.title || 'AY Gallery photo'; caption.textContent = p.title || p.src.split('/').pop(); viewer.showModal(); };
+        fig.addEventListener('click', open);
+        fig.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+        gallery.append(fig);
+      }
+    }
+    search.addEventListener('input', render);
+    sort.addEventListener('change', render);
+    document.querySelector('#close').addEventListener('click', () => viewer.close());
+    viewer.addEventListener('click', e => { if (e.target === viewer) viewer.close(); });
+
+    fetch('./photos.json')
+      .then(r => { if (!r.ok) throw new Error('No photo list yet'); return r.json(); })
+      .then(data => { photos = Array.isArray(data) ? data : []; render(); })
+      .catch(() => render());
+  </script>
+</body>
+</html>

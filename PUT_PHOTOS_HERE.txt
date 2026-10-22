@@ -1,0 +1,1 @@
+Put your own photo files in this folder. Then list each filename in ../photos.json
